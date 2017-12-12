@@ -1,6 +1,6 @@
 {
-  "name": "node-v2-express",
-  "version": "0.0.0",
+  "name": "@notiontaxi/node-express-monogo",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "start": "node ./bin/www"
