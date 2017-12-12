@@ -1,0 +1,13 @@
+extends layout
+
+block content
+  form(method='POST' action='/article/#{article._id ? "update" : "save"}')
+    input(type='hidden', name='id', value='#{article._id}')
+    div.form-group
+      label(for='title') Title:
+      input(type='text', placeholder='Title', name='title', value='#{ article.title || "Title" }')
+    br
+    div.form-group
+      textarea(cols="80", rows="18", placeholder='Text' name='text') #{article.text}
+    br
+    button.btn.btn-primary(type='submit') #{article._id ? "Update!" : "Save!"}

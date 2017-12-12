@@ -1,0 +1,8 @@
+extends layout
+
+block content
+  div Please confirm deletion for article ##{id}
+
+  form(method='POST' action='/article/delete')
+    input(type='hidden', name='id', value='#{id}')
+    button.btn.btn-primary(type='submit') Delete this article!
