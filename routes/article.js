@@ -1,39 +1,19 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express')
 
-var mongo = require('mongodb').MongoClient;
-var objectId = require('mongodb').ObjectID;
-var assert = require('assert');
+const mongoDbUrl = 'localhost:27017/article-db'
+const router = express.Router()
+const db = require('monk')(mongoDbUrl)
+const articleTable = db.get('article')
 
-var mongoUrl = 'mongodb://localhost:27017'
-
-const resolveId = function(req, res, next){
-  const notFound = function(){
-    const errNotFound = new Error('Not Found');
-    errNotFound.status = 404;
-    res.render('error', { message: "Id "+req.params.id+" is not valid!", error: errNotFound });
-  }
-
-  try{
-    const id = objectId(req.params.id || req.body.id)
-  } catch (error){
-    notFound()
-  }
-
-  return id
+const notFoundError = function(error){
+  res.render('error', { message: "Article "+req.params.id+" not found!", error: error });
 }
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  mongo.connect(mongoUrl, function(err, client) {
-    assert.equal(null, err);
-    const db = client.db('article-db')
-    db.collection('article').find().toArray( function(err, result){
-      assert.equal(null, err);
-      db.close()
-      res.render('index', { articles: result });
-    });
-  })
+  articleTable.find({}).then(function(articles) {
+    res.render('index', { articles: articles });
+  }).catch(function(error){ notFoundError(error) })
 });
 
 router.get('/article/new', function(req, res, next) {
@@ -41,43 +21,19 @@ router.get('/article/new', function(req, res, next) {
 });
 
 router.get('/article/:id/edit', function(req, res, next) {
-  const id = resolveId(req, res, next)
+  const id = db.id(req.params.id || req.body.id)
 
-  mongo.connect(mongoUrl, function(err, client) {
-    assert.equal(null, err);
-    const db = client.db('article-db')
-    db.collection('article').find(id).toArray( function(err, result){
-      assert.equal(null, err);
-      db.close()
-      if(result.length){
-        res.render('article', { article: result[0] });
-      } else {
-        const errNotFound = new Error('Not Found');
-        errNotFound.status = 404;
-        res.render('error', { message: "Article "+req.params.id+" not found!", error: errNotFound });
-      }
-    });
-  })
+  articleTable.find({_id: id}).then(function(articles){
+    res.render('article', { article: articles[0] });
+  }).catch(function(error){ notFoundError(error) })
 });
 
 router.get('/article/:id', function(req, res, next) {
-  const id = resolveId(req, res, next)
+  const id = db.id(req.params.id || req.body.id)
 
-  mongo.connect(mongoUrl, function(err, client) {
-    assert.equal(null, err);
-    const db = client.db('article-db')
-    db.collection('article').find(id).toArray( function(err, result){
-      assert.equal(null, err);
-      db.close()
-      if(result.length){
-        res.render('article_presentation', { article: result[0] });
-      } else {
-        const errNotFound = new Error('Not Found');
-        errNotFound.status = 404;
-        res.render('error', { message: "Article with id "+id+" not found", error: errNotFound });
-      }
-    });
-  })
+  articleTable.find({_id: id}).then(function(articles){
+    res.render('article_presentation', { article: articles[0] });
+  }).catch(function(error){ notFoundError(error) })
 });
 
 router.post('/article/save', function(req, res, next) {
@@ -86,59 +42,35 @@ router.post('/article/save', function(req, res, next) {
     text: req.body.text,
   }
 
-  mongo.connect(mongoUrl, function(err, client) {
-    assert.equal(null, err);
-    const db = client.db('article-db')
-    db.collection('article').insertOne(article, function(err, result){
-      assert.equal(null, err);
-      db.close()
-      res.redirect(result.insertedId)
-    });
-  })
+  articleTable.insert(article).then(function(article){
+    res.redirect(article._id)
+  }).catch(function(error){ notFoundError(error) })
 });
 
 router.post('/article/update', function(req, res, next) {
-  const id = resolveId(req, res, next)
+  const id = db.id(req.params.id || req.body.id)
 
   var article = {
     title: req.body.title,
     text: req.body.text,
   }
 
-  console.log("++++++++++++++++++++++++++")
-  console.log(article)
-  console.log(id)
-  console.log("++++++++++++++++++++++++++")
-
-  mongo.connect(mongoUrl, function(err, client) {
-    assert.equal(null, err);
-    const db = client.db('article-db')
-    db.collection('article').updateOne({ _id: id },{ $set: article }, function(err, result){
-      assert.equal(null, err);
-      db.close()
-      res.redirect(req.body.id)
-    });
-  })
-
+  articleTable.update({_id: id}, article).then(function(article){
+    res.redirect(id)
+  }).catch(function(error){ notFoundError(error) })
 });
 
 router.get('/article/:id/delete', function(req, res, next) {
-  const id = resolveId(req, res, next)
+  const id = db.id(req.params.id || req.body.id)
   res.render('delete', { id: id });
 });
 
 router.post('/article/delete', function(req, res, next) {
-  const id = resolveId(req, res, next)
+  const id = db.id(req.params.id || req.body.id)
 
-  mongo.connect(mongoUrl, function(err, client) {
-    assert.equal(null, err);
-    const db = client.db('article-db')
-    db.collection('article').deleteOne({ _id: id }, function(err, result){
-      assert.equal(null, err);
-      db.close()
-      res.redirect('/')
-    });
-  })
+  articleTable.remove({_id: id}).then(function(article){
+    res.redirect('/')
+  }).catch(function(error){ notFoundError(error) })
 });
 
 module.exports = router;
